@@ -1,0 +1,16 @@
+---
+- hosts: rpi
+  vars:
+    SSID: Home Wifi
+    PSK: SecurePa55w0rd
+  tasks:
+  - name: Copying Supplicant Files
+    become: yes 
+    template:
+      src: templates/wpa_supplicant.conf
+      dest: /etc/wpa_supplicant/wpa_supplicant.conf
+      mode: 0600
+      
+  -  name: Check Supplicant
+     shell: cat /etc/wpa_supplicant/wpa_supplicant.conf
+     become: yes
