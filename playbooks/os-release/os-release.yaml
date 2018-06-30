@@ -1,0 +1,10 @@
+---
+- hosts: rpi
+  remote_user: root
+  tasks:
+  - name: Copying me
+    template:
+      src: templates/me
+      dest: ~/me.ms
+  -  name: Shell os release
+     shell: cat /etc/os-release
