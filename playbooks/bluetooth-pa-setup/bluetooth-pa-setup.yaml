@@ -1,0 +1,200 @@
+---
+- hosts: rpi
+  vars:
+    BLUETOOTH_NAME: NAME
+    DEPS: [ pulseaudio-module-bluetooth , python-dbus , libltdl-dev , pulseaudio , libtool , intltool , libsndfile-dev , libcap-dev , libjson0-dev , libasound2-dev , libavahi-client-dev , libbluetooth-dev , libglib2.0-dev , libsamplerate0-dev , libsbc-dev , libspeexdsp-dev , libssl-dev , libtdb-dev , libbluetooth-dev , intltool , autoconf , autogen , automake , build-essential , libasound2-dev , libflac-dev , libogg-dev , libtool , libvorbis-dev , pkg-config , python ]
+  tasks:
+  - name: Ensure all needed dependencies are updated
+    apt:
+      name: "{{ item }}"
+      state: latest
+    with_items:
+        "{{DEPS}}"
+    become: yes
+  - name : Copy Volume Watcher Script
+    template:
+      src: templates/volume-watcher.py
+      dest: /usr/local/bin/volume-watcher.py
+    become: yes
+  - name : Copy Volume Watcher Service
+    template:
+      src: templates/volume-watcher.service
+      dest: /lib/systemd/system/volume-watcher.service
+    become: yes
+  - name: Enable Volume Watcher Service
+    shell : sudo systemctl enable volume-watcher
+    become: yes
+  - name: Set Pretty Hostname
+    shell : echo PRETTY_HOSTNAME=$BluetoothName >> /tmp/machine-info
+    become: yes
+  - name: Move to Etc
+    shell: sudo cp /tmp/machine-info /etc/machine-info
+    become: yes
+  - name: Templating Pulse Audio Daemon
+    template:
+      src: templates/pulseaudio
+      dest: /etc/init.d/pulseaudio
+      mode: 0755
+    become: yes
+  - name: Update Pulse Audio Daemon Settings
+    shell: sudo update-rc.d pulseaudio defaults
+    become: yes
+  - name: Templating Bluetooth Daemon
+    template:
+      src: templates/bluetooth
+      dest: /etc/init.d/bluetooth
+      mode: 0755
+    become: yes
+  - name: Update Bluetooth Daemon Settings
+    shell: sudo update-rc.d bluetooth defaults
+    become: yes
+  - name: Templating Bluetooth-Agent Daemon
+    template:
+      src: templates/bluetooth-agent
+      dest: /etc/init.d/bluetooth-agent
+      mode: 0755
+    become: yes
+  - name: Update Bluetooth-Agent Daemon Settings
+    shell: sudo update-rc.d bluetooth-agent defaults
+    become: yes
+  - name: Templating Bluez-udev
+    template:
+      src: templates/bluez-udev
+      dest: /usr/local/bin/bluez-udev
+      mode: 0755
+    become: yes
+  - name: Templating Simple Agent Autotrust
+    template:
+      src: templates/simple-agent.autotrust
+      dest: /usr/local/bin/simple-agent.autotrust
+      mode: 0755
+    become: yes
+  - name: Templating Say Script
+    template:
+      src: templates/say.sh
+      dest: /usr/local/bin/say.sh
+      mode: 0755
+    become: yes
+  - name: Templating Bluezutils Script
+    template:
+      src: templates/bluezutils.py
+      dest: /usr/local/bin/bluezutils.py
+      mode: 0755
+    become: yes
+  - name: Stat /etc/pulse
+    stat: path=/etc/pulse
+    register: pulse_stat
+  - name: No Pulse Exists, creating
+    command: mkdir /etc/pulse
+    become: yes
+    when: pulse_stat.stat.exists == False
+  - name: Pulse Exists, Templating Files
+    template:
+      src: templates/daemon.conf
+      dest: /etc/pulse/daemon.conf
+      mode: 0644
+    become: yes
+    when: pulse_stat.stat.exists == True
+  - name: Templating boot/config.txt
+    template:
+      src: templates/boot-config.txt
+      dest: /boot/config.txt
+      mode: 0755
+  - name: Templating 99-com udev rules
+    template:
+      src: templates/99-com.rules
+      dest: /etc/udev/rules.d/99-com.rules
+      mode: 0644
+  - name: Templating bluetooth/main.conf
+    template:
+      src: templates/bluetooth-main.conf
+      dest: /etc/bluetooth/main.conf
+      mode: 0644
+  - name: Templating pulse/system.pa
+    template:
+      src: templates/pulse-system.pa
+      dest: /etc/pulse/system.pa
+      mode: 0644
+  - name: Cloning json-c
+    git:
+      repo: https://github.com/json-c/json-c.git
+      dest: /tmp/json-c
+      version: master
+      accept_hostkey: yes
+    become: yes
+  - name: Autogen json-c
+    command: chdir=/tmp/json-c ./autogen.sh
+    become: yes  
+  - name: Configuring json-c
+    command: chdir=/tmp/json-c ./configure
+    become: yes     
+  - name: Make json-c
+    command: chdir=/tmp/json-c make
+    become: yes  
+  - name: Make install json-c
+    command: chdir=/tmp/json-c make install
+    become: yes  
+  - name: Cloning libsndfile
+    git:
+      repo: git://github.com/erikd/libsndfile.git
+      dest: /tmp/libsndfile
+      version: master
+      accept_hostkey: yes
+    become: yes
+  - name: Autogen libsndfile
+    command: chdir=/tmp/libsndfile ./autogen.sh
+    become: yes  
+  - name: Configuring libsndfile
+    command: chdir=/tmp/libsndfile ./configure --enable-werror
+    become: yes     
+  - name: Make libsndfile
+    command: chdir=/tmp/libsndfile make
+    become: yes  
+  - name: Make install libsndfile
+    command: chdir=/tmp/libsndfile make install
+    become: yes  
+  - name: Cloning Pulse Audio
+    git:
+      repo: https://github.com/pulseaudio/pulseaudio.git
+      dest: /tmp/pulseaudio
+      version: v6.0
+      accept_hostkey: yes
+    become: yes
+  - name: Safely Handle Pulse
+    command: sudo mv /etc/pulse /tmp/pulse_bu
+    become: yes
+  - name: Bootstrap pulseaudio
+    command: chdir=/tmp/pulseaudio ./bootstrap.sh
+    become: yes  
+  - name: Make pulseaudio
+    command: chdir=/tmp/pulseaudio sudo make
+    become: yes     
+  - name: Make install pulseaudio
+    command: chdir=/tmp/pulseaudio make install
+    become: yes  
+  - name: Run ldconfig
+    command: chdir=/tmp/pulseaudio ldconfig
+    become: yes  
+  - name: Return /etc/pulse
+    command: sudo mv /tmp/pulse_bu /etc/pulse
+    become: yes
+  - name: Add pulse as system group
+    command: sudo addgroup --system pulse
+    become: yes
+  - name: Add user pulse
+    command: sudo adduser --system --ingroup pulse --home /var/run/pulse pulse
+    become: yes
+  - name: Add group pulse-access
+    command: sudo addgroup --system pulse-access
+    become: yes
+  - name: Add pulse to audio group
+    command: sudo adduser pulse audio
+    become: yes
+  - name: Add root to pulse-access
+    command: sudo adduser root pulse-access
+    become: yes
+  - name: Add pulse to lp group
+    command: sudo adduser pulse lp
+    become: yes
+
+
