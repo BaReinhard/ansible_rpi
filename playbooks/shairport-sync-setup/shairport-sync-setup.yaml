@@ -2,6 +2,8 @@
 - hosts: rpi
   vars:
     DEPS: [ build-essential ,git ,autoconf ,automake, libtool, libdaemon-dev, libasound2-dev ,libpopt-dev, libconfig-dev ,avahi-daemon, libavahi-client-dev ,libssl-dev ,libpolarssl-dev, libsoxr-dev]
+    OUTPUT_DEVICE: hw:0,0
+    SHAIRPORT_NAME: NAME_GOES_HERE
   tasks:
   - name: Ensure all needed dependencies are updated
     apt:
@@ -35,5 +37,9 @@
     service:
       name: shairport-sync
       state: started
-
+  - name : Copy Configuration File
+    template:
+      src: templates/shairport-sync.conf
+      dest: /etc/te.conf
+    become: yes
 
