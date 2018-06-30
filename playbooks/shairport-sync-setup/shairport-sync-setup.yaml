@@ -1,0 +1,53 @@
+---
+- hosts: rpi
+  vars:
+    DEPS: [ build-essential ,git ,autoconf ,automake, libtool, libdaemon-dev, libasound2-dev ,libpopt-dev, libconfig-dev ,avahi-daemon, libavahi-client-dev ,libssl-dev ,libpolarssl-dev, libsoxr-dev]
+    OUTPUT_DEVICE: hw:0,0
+    SHAIRPORT_NAME: Any Name You Desire
+  tasks:
+  - name: Ensure all needed dependencies are updated
+    apt:
+      name: "{{ item }}"
+      state: latest
+    with_items:
+        "{{DEPS}}"
+    become: yes
+  - name: Cloning Shairport Sync Repo
+    git:
+      repo: https://github.com/mikebrady/shairport-sync.git
+      dest: /tmp/shairport-sync
+      version: master
+      accept_hostkey: yes
+    become: yes
+  - name: Run autoreconf on shairport
+    command: chdir=/tmp/shairport-sync autoreconf -i -f
+    become: yes
+  - name: Configuration Shairport Sync
+    command: chdir=/tmp/shairport-sync ./configure --sysconfdir=/etc --with-stdout --with-pipe --with-alsa --with-avahi --with-ssl=openssl --with-metadata --with-soxr --with-systemd
+    become: yes    
+  - name: Run make
+    command: chdir=/tmp/shairport-sync make
+    become: yes  
+  - name: Create group for Shairport-Sync
+    shell: getent group shairport-sync &>/dev/null || sudo groupadd -r shairport-sync >/dev/null
+    become: yes
+  - name: Add User to Shairport-Sync Group
+    shell: getent passwd shairport-sync &> /dev/null || sudo useradd -r -M -g shairport-sync -s /usr/bin/nologin -G audio shairport-sync >/dev/null
+    become: yes
+  - name: Run make install
+    command: chdir=/tmp/shairport-sync make install
+    become: yes
+  - name: Enable Shairport Sync System Daemon
+    shell: sudo systemctl enable shairport-sync
+    become: yes
+  - name: Ensure Shairport Sync System Daemon
+    service:
+      name: shairport-sync
+      state: started
+    become: yes    
+  - name : Copy Configuration File
+    template:
+      src: templates/shairport-sync.conf
+      dest: /etc/shairport-sync.conf
+    become: yes
+
