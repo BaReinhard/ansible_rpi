@@ -2,7 +2,7 @@
 - hosts: rpi
   vars:
     BLUETOOTH_NAME: NAME
-    DEPS: [ pulseaudio-module-bluetooth , python-dbus , libltdl-dev , pulseaudio , libtool , intltool , libsndfile-dev , libcap-dev , libjson0-dev , libasound2-dev , libavahi-client-dev , libbluetooth-dev , libglib2.0-dev , libsamplerate0-dev , libsbc-dev , libspeexdsp-dev , libssl-dev , libtdb-dev , libbluetooth-dev , intltool , autoconf , autogen , automake , build-essential , libasound2-dev , libflac-dev , libogg-dev , libtool , libvorbis-dev , pkg-config , python ]
+    DEPS: [ pulseaudio-module-bluetooth, git , python-dbus , libltdl-dev , pulseaudio , libtool , intltool , libsndfile-dev , libcap-dev , libjson-c-dev , libasound2-dev , libavahi-client-dev , libbluetooth-dev , libglib2.0-dev , autopoint , libsamplerate0-dev , libsbc-dev , libspeexdsp-dev , libssl-dev , libtdb-dev , libbluetooth-dev , intltool , autoconf , autogen , automake , build-essential , libasound2-dev , libflac-dev , libogg-dev , libtool , libvorbis-dev , pkg-config , python ]
   tasks:
   - name: Ensure all needed dependencies are updated
     apt:
@@ -23,6 +23,14 @@
     become: yes
   - name: Enable Volume Watcher Service
     shell : sudo systemctl enable volume-watcher
+    become: yes
+  - name : Copy System Udev Service
+    template:
+      src: templates/systemd-udevd.service
+      dest: /lib/systemd/system/systemd-udevd.service
+    become: yes
+  - name: Start Systemd udevd Service
+    shell : sudo systemctl enable systemd-udevd
     become: yes
   - name: Set Pretty Hostname
     shell : echo PRETTY_HOSTNAME=$BluetoothName >> /tmp/machine-info
@@ -100,21 +108,25 @@
       src: templates/boot-config.txt
       dest: /boot/config.txt
       mode: 0755
+    become: yes
   - name: Templating 99-com udev rules
     template:
       src: templates/99-com.rules
       dest: /etc/udev/rules.d/99-com.rules
       mode: 0644
+    become: yes
   - name: Templating bluetooth/main.conf
     template:
       src: templates/bluetooth-main.conf
       dest: /etc/bluetooth/main.conf
       mode: 0644
+    become: yes
   - name: Templating pulse/system.pa
     template:
       src: templates/pulse-system.pa
       dest: /etc/pulse/system.pa
       mode: 0644
+    become: yes
   - name: Cloning json-c
     git:
       repo: https://github.com/json-c/json-c.git
@@ -153,31 +165,6 @@
   - name: Make install libsndfile
     command: chdir=/tmp/libsndfile make install
     become: yes  
-  - name: Cloning Pulse Audio
-    git:
-      repo: https://github.com/pulseaudio/pulseaudio.git
-      dest: /tmp/pulseaudio
-      version: v6.0
-      accept_hostkey: yes
-    become: yes
-  - name: Safely Handle Pulse
-    command: sudo mv /etc/pulse /tmp/pulse_bu
-    become: yes
-  - name: Bootstrap pulseaudio
-    command: chdir=/tmp/pulseaudio ./bootstrap.sh
-    become: yes  
-  - name: Make pulseaudio
-    command: chdir=/tmp/pulseaudio sudo make
-    become: yes     
-  - name: Make install pulseaudio
-    command: chdir=/tmp/pulseaudio make install
-    become: yes  
-  - name: Run ldconfig
-    command: chdir=/tmp/pulseaudio ldconfig
-    become: yes  
-  - name: Return /etc/pulse
-    command: sudo mv /tmp/pulse_bu /etc/pulse
-    become: yes
   - name: Add pulse as system group
     command: sudo addgroup --system pulse
     become: yes
