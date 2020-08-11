@@ -4,8 +4,8 @@ Ansible RPI Playbooks for learning Ansible. These were playbooks I created while
 
 ## Initial Setup:
 
-1. Edit the hosts file in the root directory of this project to use your RPI's IP Address
-2. Edit the `ansible.cfg file in the root directory of this project to use your RPI's remote_user (it is pi by default)
+1. Edit the `hosts` file in the root directory of this project to use your RPI's IP Address
+2. Edit the `ansible.cfg` file in the root directory of this project to use your RPI's remote_user (it is pi by default)
 3. Make sure ansible is installed, you can install it via `sudo -H /usr/local/bin/pip3 install ansible`
 4. Run the playbook you want to execute via the command below:
 
