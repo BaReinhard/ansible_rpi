@@ -1,0 +1,63 @@
+---
+- hosts: rpi
+  vars:
+    DEPS: [ apt-transport-https ]
+    USERNAME: "bareinhard"
+  tasks:
+  - name: "Update and Upgrade"
+    apt:
+      update_cache: yes
+      upgrade: dist
+      install_recommends: yes
+    become: yes 
+  - name: Ensure all needed dependencies are updated
+    apt:
+      name: "{{ item }}"
+      state: latest
+    with_items:
+        "{{DEPS}}"
+    become: yes
+  - name: Add an Apt signing key, will not download if present
+    apt_key:
+      url: https://downloads.plex.tv/plex-keys/PlexSign.key
+      state: present
+    become: yes
+  - name: Create a plex list if it does not exist
+    file:
+      path: /etc/apt/sources.list.d/plexmediaserver.list
+      state: touch
+      mode: '0644'
+    become: yes
+  - name: Test for repo in source list
+    shell: grep -c "deb https://downloads.plex.tv/repo/deb public main" /etc/apt/sources.list.d/plexmediaserver.list || true
+    register: test_grep
+    become: yes
+  - name: add Repo to Source list
+    lineinfile:
+      dest: /etc/apt/sources.list.d/plexmediaserver.list
+      line: deb https://downloads.plex.tv/repo/deb public main
+    when: test_grep.stdout == "0"
+    become: yes
+  - name: Update new sources
+    apt:
+      update_cache: yes
+    become: yes
+  - name: Install Plex Media Server
+    apt:
+      name: plexmediaserver
+      state: latest
+    become: yes
+  - name: Get IP
+    shell: hostname -I | awk '{print $1}'
+    register: ip_out
+    become: yes
+  - name: Test for IP in /boot/cmdline.txt
+    shell: grep -c "^ip" /boot/cmdline.txt || true
+    register: ip_exists
+    become: yes
+  - name: Add IP to commandline.txt
+    lineinfile:
+      dest: /boot/cmdline.txt
+      line: ip="{{ ip_out.stdout }}"
+    when: ip_exists.stdout == "0"
+    become: yes
