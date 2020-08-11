@@ -14,7 +14,7 @@ Ansible RPI Playbooks for learning Ansible. These were playbooks I created while
 ansible-playbook playbooks/folder/folder.yaml --limit rpi -i ./hosts --list-hosts 
 
 # Execute by removing --list-hosts
-ansible-playbook playbooks/folder/folder.yaml --limit rpi - ./hosts
+ansible-playbook playbooks/folder/folder.yaml --limit rpi -i ./hosts
 
 ```
 
